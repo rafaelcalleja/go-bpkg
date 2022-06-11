@@ -1,0 +1,13 @@
+{
+  "name": "test-package",
+  "version": "0.0.1",
+  "description": "test-description",
+  "files": [
+    "src/files/file1",
+    "src/files/file2"
+  ],
+  "scripts": [
+    "src/scripts/file1",
+    "src/scripts/file2"
+  ]
+}
