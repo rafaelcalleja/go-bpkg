@@ -9,7 +9,6 @@ go-bpkg github login [flags]
 ### Options
 
 ```
-      --config string         Config path
   -p, --git-protocol string   The protocol to use for git operations: {ssh|https}
   -h, --hostname string       The hostname of the GitHub instance to authenticate with
   -s, --scopes strings        Additional authentication scopes to request

@@ -9,7 +9,6 @@ go-bpkg github status [flags]
 ### Options
 
 ```
-      --config string     Config path
   -h, --hostname string   Check a specific hostname's auth status
   -t, --show-token        Display the auth token
 ```

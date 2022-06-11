@@ -27,7 +27,6 @@ func NewCmdStatus(cmdFactory *cmdutil.Factory, helper cmdHelper.ErrorHelper) *co
 	}
 
 	newCmd.Flags().AddFlagSet(githubStatusCmd.Flags())
-	newCmd.Flags().StringVar(&o.configDir, "config", "", "Config path")
 
 	return newCmd
 }

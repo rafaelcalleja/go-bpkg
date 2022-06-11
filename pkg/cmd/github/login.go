@@ -44,7 +44,6 @@ func NewCmdLogin(cmdFactory *cmdutil.Factory, helper cmdHelper.ErrorHelper) *cob
 	}
 
 	newCmd.Flags().AddFlagSet(githubLoginCmd.Flags())
-	newCmd.Flags().StringVar(&o.configDir, "config", "", "Config path")
 
 	return newCmd
 }
