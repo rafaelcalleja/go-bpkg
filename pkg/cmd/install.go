@@ -9,15 +9,15 @@ import (
 	"github.com/rafaelcalleja/go-kit/logger"
 	"github.com/spf13/cobra"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
 type PackageInstallOptions struct {
-	packageName string
-	installPath string
-	token       string
-	upgrade     bool
-	private     bool
+	packageName  string
+	installPath  string
+	token        string
+	metadataJson string
 }
 
 func NewPackageInstall(
@@ -64,19 +64,30 @@ func NewPackageInstall(
 				term.ColorInfo(o.installPath))
 
 			assetGithub := repository.NewGithubProvider(factory)
-			err = releaseVersion.DownloadAsset(assetGithub, o.installPath)
+			asset, err := releaseVersion.DownloadAsset(assetGithub, o.installPath)
 			helper.CheckErr(err)
+
+			if "" != strings.TrimSpace(o.metadataJson) {
+				metadata, err := repository.NewPackageInstallerFromLiteral(o.metadataJson, filepath.Join(o.installPath, "package.json"))
+				helper.CheckErr(err)
+
+				err = asset.Install(metadata, o.installPath)
+				helper.CheckErr(err)
+			} else {
+				err = releaseVersion.InstallAsset(asset, o.installPath)
+				helper.CheckErr(err)
+			}
 
 			log.Infof("Installed Successfully")
 		},
 	}
 
-	newCmd.Flags().StringVar(&o.packageName, "package", "", "Organization")
-	newCmd.Flags().StringVar(&o.installPath, "installPath", "", "Install Folder")
+	newCmd.Flags().StringVar(&o.packageName, "package", "", "[package to install] package/name:v1.0.0 ")
+	newCmd.Flags().StringVar(&o.installPath, "installPath", "./deps", "[package install path]")
 	newCmd.Flags().StringVar(&o.token, "token", "", "Github Token")
+	newCmd.Flags().StringVar(&o.metadataJson, "metadataJson", "", "overwrite current package.json")
 
 	_ = newCmd.MarkFlagRequired("package")
-	_ = newCmd.MarkFlagRequired("installPath")
 
 	return newCmd
 }

@@ -29,7 +29,7 @@ func TestUnmarshall(t *testing.T) {
 
 	assert.Equal(
 		t,
-		map[string]string{"src/scripts/file1": "bin/file1", "src/scripts/file2": "bin/file2"},
+		[]string{"src/scripts/file1", "src/scripts/file2"},
 		packageFile.LinkFiles(),
 	)
 
@@ -58,4 +58,17 @@ func TestUnmarshall(t *testing.T) {
 func TestNotFound(t *testing.T) {
 	_, err := NewPackageInstallerFromFileName("testdata/package_not_found.json")
 	assert.NotNil(t, err)
+}
+
+func TestFromLiteralUnmarshall(t *testing.T) {
+	metadata := "{\"name\":\"test-package\",\"version\":\"0.0.1\",\"description\":\"test-description\",\"files\":[\"src/files/file1\",\"src/files/file2\"],\"scripts\":[\"src/scripts/file1\",\"src/scripts/file2\"]}"
+	releaseDir, _ := os.MkdirTemp("", "temp-test-package-folder")
+
+	packageFile, err := NewPackageInstallerFromLiteral(metadata, filepath.Join(releaseDir, "package.json"))
+	require.Nil(t, err)
+
+	other, err := NewPackageInstallerFromFileName("testdata/package.json")
+	require.Nil(t, err)
+
+	assert.True(t, packageFile.Equals(other))
 }

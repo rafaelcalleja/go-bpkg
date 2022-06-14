@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 )
 
 type PackageInstaller struct {
@@ -17,6 +18,20 @@ type PackageInstaller struct {
 	Scripts  []string `json:"scripts"`
 	Files    []string `json:"files"`
 	BinDir   string
+}
+
+func NewPackageInstallerFromLiteral(metadata string, filePath string) (*PackageInstaller, error) {
+	if err := os.MkdirAll(filepath.Dir(filePath), 0755); nil != err {
+		return &PackageInstaller{}, errors.New(fmt.Sprintf("Error Creating dir %s", filepath.Dir(filePath)))
+	}
+
+	err := ioutil.WriteFile(filePath, []byte(metadata), 0644)
+
+	if err != nil {
+		return &PackageInstaller{}, errors.New(fmt.Sprintf("Error creating metadata file %s", filePath))
+	}
+
+	return NewPackageInstallerFromFileName(filePath)
 }
 
 func NewPackageInstallerFromFileName(filePath string) (*PackageInstaller, error) {
@@ -55,11 +70,11 @@ func (packageMetadata *PackageInstaller) InstallationFiles() []string {
 	return f
 }
 
-func (packageMetadata *PackageInstaller) LinkFiles() map[string]string {
-	f := make(map[string]string)
+func (packageMetadata *PackageInstaller) LinkFiles() []string {
+	f := make([]string, 0)
 
 	for _, file := range packageMetadata.Scripts {
-		f[file] = filepath.Join(packageMetadata.BinDir, filepath.Base(file))
+		f = append(f, file)
 	}
 
 	return f
@@ -97,28 +112,69 @@ func (packageMetadata *PackageInstaller) Install(sourceDir string, destDir strin
 		}
 	}
 
-	binDir := filepath.Join(destDir, packageMetadata.BinDir)
+	binDir := filepath.Join(filepath.Dir(destDir), packageMetadata.BinDir)
 	if err := os.MkdirAll(binDir, 0755); nil != err {
 		return errors.New(fmt.Sprintf("Error Creating bin dir %s", binDir))
 	}
 
-	for srcFile, linkFile := range packageMetadata.LinkFiles() {
+	for _, srcFile := range packageMetadata.LinkFiles() {
 		src := filepath.Join(sourceDir, srcFile)
-		dst := filepath.Join(destDir, linkFile)
+		dst := filepath.Join(destDir, srcFile)
 
-		symlinkPathTmp := dst + ".tmp"
+		if _, err := os.Stat(src); errors.Is(err, os.ErrNotExist) {
+			return errors.New(fmt.Sprintf("Source File not found %s", src))
+		}
+
+		if err := os.MkdirAll(filepath.Dir(dst), 0755); nil != err {
+			return errors.New(fmt.Sprintf("Error Creating dir %s", filepath.Dir(dst)))
+		}
+
+		if err := files.CopyFile(src, dst); nil != err {
+			return errors.New(fmt.Sprintf("Error Coping %s to %s", src, dst))
+		}
+
+		dstLink := filepath.Join(binDir, filepath.Base(srcFile))
+
+		symlinkPathTmp := dstLink + ".tmp"
 		if err := os.Remove(symlinkPathTmp); err != nil && !os.IsNotExist(err) {
 			return errors.New(fmt.Sprintf("Error Unlinking Symlink from %s", dst))
 		}
 
-		if err := os.Symlink(src, symlinkPathTmp); err != nil {
+		if err := os.Symlink(dst, symlinkPathTmp); err != nil {
 			return errors.New(fmt.Sprintf("Error Creating Symlink from %s to %s", src, dst))
 		}
 
-		if err := os.Rename(symlinkPathTmp, dst); err != nil {
+		if err := os.Rename(symlinkPathTmp, dstLink); err != nil {
 			return errors.New(fmt.Sprintf("Error Renaming Symlink from %s to %s", src, dst))
 		}
 	}
 
 	return nil
+}
+
+func (packageMetadata *PackageInstaller) Equals(other *PackageInstaller) bool {
+	return packageMetadata.Name == other.Name &&
+		packageMetadata.BinDir == other.BinDir &&
+		packageMetadata.equal(packageMetadata.Scripts, other.Scripts) &&
+		packageMetadata.equal(packageMetadata.Files, other.Files) &&
+		packageMetadata.Manifest == other.Manifest &&
+		packageMetadata.Version == other.Version
+
+}
+
+func (packageMetadata *PackageInstaller) equal(a, b []string) bool {
+	sort.Strings(a)
+	sort.Strings(b)
+
+	if len(a) != len(b) {
+		return false
+	}
+
+	for i, v := range a {
+		if v != b[i] {
+			return false
+		}
+	}
+
+	return true
 }

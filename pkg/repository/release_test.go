@@ -28,7 +28,7 @@ func TestDownloadPlugin(t *testing.T) {
 	require.Nil(t, err)
 
 	assert.False(t, testReleaseVersionOther.IsInstalled(releaseDir))
-	err = testReleaseVersionOther.DownloadAsset(newAssetProviderMock(), releaseDir)
+	err = testReleaseVersionOther.DownloadAndInstallAsset(newAssetProviderMock(), releaseDir)
 	require.Nil(t, err)
 
 	assert.True(t, testReleaseVersionOther.IsInstalled(releaseDir))

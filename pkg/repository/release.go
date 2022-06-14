@@ -3,7 +3,6 @@ package repository
 import (
 	"errors"
 	"fmt"
-	"github.com/jenkins-x/jx-helpers/v3/pkg/files"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -130,22 +129,22 @@ func (releaseVersion *ReleaseVersion) HasPackageMetadata(releaseDir string) bool
 	return err == nil
 }
 
-func (releaseVersion *ReleaseVersion) DownloadAsset(provider ReleasesProvider, releaseDir string) error {
+func (releaseVersion *ReleaseVersion) DownloadAsset(provider ReleasesProvider, releaseDir string) (ReleaseAssets, error) {
 	var err error
 
 	tempDirectory, err := os.MkdirTemp("", "temp-plugin-folder")
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error Downloading Plugin can't create temp dir %s", tempDirectory))
+		return ReleaseAssets{}, errors.New(fmt.Sprintf("Error Downloading Plugin can't create temp dir %s", tempDirectory))
 	}
 
 	err = provider.Download(releaseVersion, tempDirectory)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error Downloading Plugin executing cmd from provider %s", provider))
+		return ReleaseAssets{}, errors.New(fmt.Sprintf("Error Downloading Plugin executing cmd from provider %s", provider))
 	}
 
 	dirFiles, err := ioutil.ReadDir(tempDirectory)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error Downloading Plugin ioutil.ReadDir failed at %s", tempDirectory))
+		return ReleaseAssets{}, errors.New(fmt.Sprintf("Error Downloading Plugin ioutil.ReadDir failed at %s", tempDirectory))
 	}
 
 	var pluginFileTar string
@@ -153,20 +152,30 @@ func (releaseVersion *ReleaseVersion) DownloadAsset(provider ReleasesProvider, r
 		pluginFileTar = filepath.Join(tempDirectory, f.Name())
 	}
 
-	err = files.UnTargzAll(pluginFileTar, tempDirectory)
-	if err != nil {
-		return errors.New(fmt.Sprintf("Error Downloading Plugin decompressing file %s in %s", pluginFileTar, tempDirectory))
+	return NewReleaseAssets(releaseVersion.Name, releaseVersion.VersionWithOutV(), pluginFileTar, tempDirectory), nil
+}
+
+func (releaseVersion *ReleaseVersion) DownloadAndInstallAsset(provider ReleasesProvider, releaseDir string) error {
+	var asset ReleaseAssets
+	var err error
+
+	if asset, err = releaseVersion.DownloadAsset(provider, releaseDir); err != nil {
+		return err
 	}
 
-	packageFolder := filepath.Join(fmt.Sprintf("%s-%s", releaseVersion.Name, releaseVersion.VersionWithOutV()))
-	decompressPath := filepath.Join(tempDirectory, packageFolder)
+	err = releaseVersion.InstallAsset(asset, releaseDir)
 
-	if false == releaseVersion.HasPackageMetadata(decompressPath) {
-		return errors.New(fmt.Sprintf("Error Package Metadata not found at %s", filepath.Join(decompressPath, releaseVersion.Manifest())))
+	return err
+}
+
+func (releaseVersion *ReleaseVersion) InstallAsset(asset ReleaseAssets, releaseDir string) error {
+	if false == releaseVersion.HasPackageMetadata(asset.DecompressPath()) {
+		return errors.New(fmt.Sprintf("Error Package Metadata not found at %s", filepath.Join(asset.DecompressPath(), releaseVersion.Manifest())))
 	}
 
-	packageMetadata := releaseVersion.MustPackageMetadata(decompressPath)
-	err = packageMetadata.Install(decompressPath, filepath.Join(releaseDir, releaseVersion.Name))
+	packageMetadata := releaseVersion.MustPackageMetadata(asset.DecompressPath())
+
+	err := asset.Install(packageMetadata, releaseDir)
 	if err != nil {
 		return errors.New(fmt.Sprintf("Error Installing Package %s", err))
 	}
