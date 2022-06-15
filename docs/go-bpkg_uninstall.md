@@ -1,15 +1,16 @@
-## go-bpkg version
+## go-bpkg uninstall
 
-Displays the version of this command
+BPKG uninstall
 
 ```
-go-bpkg version [flags]
+go-bpkg uninstall [flags]
 ```
 
 ### Options
 
 ```
-  -q, --quiet   uses the quiet format of just outputting the version number only
+      --installPath string   [package install path] (default "./deps")
+      --package string       [package to uninstall] package/name:v1.0.0
 ```
 
 ### Options inherited from parent commands

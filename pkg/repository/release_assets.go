@@ -96,7 +96,6 @@ func ReleaseAssetsWithUntarFilePath(untarFilesPath string) func(*ReleaseAssets) 
 
 func (asset *ReleaseAssets) PackageFolder() string {
 	return asset.packageFolder
-	//return fmt.Sprintf("%s-%s", asset.name, asset.version)
 }
 
 func (asset *ReleaseAssets) DecompressPath() string {
@@ -124,19 +123,7 @@ func (asset *ReleaseAssets) Uninstall(metadata *PackageInstaller, releaseDir str
 }
 
 func (asset *ReleaseAssets) IsInstalled(metadata *PackageInstaller, releaseDir string) bool {
-	var metadataFiles []string
-
-	err := filepath.Walk(releaseDir, func(path string, info os.FileInfo, err error) error {
-		if info.IsDir() {
-			return nil
-		}
-
-		if strings.HasSuffix(path, ".json") {
-			metadataFiles = append(metadataFiles, path)
-		}
-
-		return nil
-	})
+	metadataFiles, err := metadataFilesFinder(releaseDir)
 
 	if nil != err {
 		return false
@@ -151,6 +138,28 @@ func (asset *ReleaseAssets) IsInstalled(metadata *PackageInstaller, releaseDir s
 	}
 
 	return false
+}
+
+func metadataFilesFinder(releaseDir string) ([]string, error) {
+	var metadataFiles []string
+
+	err := filepath.Walk(releaseDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		if strings.HasSuffix(path, ".json") {
+			metadataFiles = append(metadataFiles, path)
+		}
+
+		return nil
+	})
+
+	return metadataFiles, err
 }
 
 func (asset *ReleaseAssets) clone() ReleaseAssets {

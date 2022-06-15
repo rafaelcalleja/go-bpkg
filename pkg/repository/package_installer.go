@@ -193,6 +193,7 @@ func (packageMetadata *PackageInstaller) Install(sourceDir string, destDir strin
 		}
 	}
 
+	packageMetadata.Name = filepath.Base(destDir)
 	metadataFile, err := json.MarshalIndent(packageMetadata, "", " ")
 	if nil != err {
 		return err
@@ -266,11 +267,7 @@ func (packageMetadata *PackageInstaller) Uninstall(destDir string) error {
 	}
 
 	for _, srcFile := range packageMetadata.LinkFiles() {
-		src := filepath.Join(packageMetadata.BinDir, filepath.Base(srcFile))
-
-		if _, err := os.Stat(src); errors.Is(err, os.ErrNotExist) {
-			return errors.New(fmt.Sprintf("Link File not found %s", src))
-		}
+		src := filepath.Join(filepath.Dir(destDir), packageMetadata.BinDir, filepath.Base(srcFile))
 
 		if err := os.Remove(src); nil != err {
 			return errors.New(fmt.Sprintf("Error uninstalling link file %s", src))
@@ -309,4 +306,26 @@ func (packageMetadata *PackageInstaller) equal(a, b []string) bool {
 	}
 
 	return true
+}
+
+func PackagesInstalled(releaseDir string) ([]*PackageInstaller, error) {
+	assets := make([]*PackageInstaller, 0)
+
+	metadataFiles, err := metadataFilesFinder(releaseDir)
+
+	if err != nil {
+		return []*PackageInstaller{}, err
+	}
+
+	for _, file := range metadataFiles {
+		other, err := NewPackageInstallerFromFileName(file)
+
+		if err != nil {
+			return []*PackageInstaller{}, err
+		}
+
+		assets = append(assets, other)
+	}
+
+	return assets, nil
 }

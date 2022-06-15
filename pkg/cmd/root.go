@@ -35,6 +35,7 @@ func Main() *cobra.Command {
 
 	cmd.AddCommand(version.NewCmdVersion(errorHelper, log, term))
 	cmd.AddCommand(NewPackageInstall(factory, errorHelper, log, term))
+	cmd.AddCommand(NewPackageUninstall(errorHelper, log, term))
 	cmd.AddCommand(github.NewCmdGithub(factory, errorHelper))
 
 	return cmd

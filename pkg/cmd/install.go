@@ -39,6 +39,12 @@ func NewPackageInstall(
 			fqpVO, err := repository.NewFullyQualifyPackage(o.packageName)
 			helper.CheckErr(err)
 
+			if "" == strings.TrimSpace(fqpVO.Version()) {
+				log.Errorf("version is required, package format is [%s] || [%s]", term.ColorInfo("package/name:v1.0.0"), term.ColorInfo("package/name:latest"))
+
+				return
+			}
+
 			releaseVersion, err := repository.NewReleaseVersionWith(
 				repository.ReleaseVersionWithOrganization(fqpVO.Organization()),
 				repository.ReleaseVersionWithName(fqpVO.Name()),
@@ -82,7 +88,7 @@ func NewPackageInstall(
 		},
 	}
 
-	newCmd.Flags().StringVar(&o.packageName, "package", "", "[package to install] package/name:v1.0.0 ")
+	newCmd.Flags().StringVar(&o.packageName, "package", "", "[package to install] package/name:v1.0.0")
 	newCmd.Flags().StringVar(&o.installPath, "installPath", "./deps", "[package install path]")
 	newCmd.Flags().StringVar(&o.token, "token", "", "Github Token")
 	newCmd.Flags().StringVar(&o.metadataJson, "metadataJson", "", "overwrite current package.json")
