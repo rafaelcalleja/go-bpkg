@@ -23,7 +23,7 @@ func TestUnmarshall(t *testing.T) {
 
 	assert.Equal(
 		t,
-		[]string{"src/files/file1", "src/files/file2", "src/scripts/file1", "src/scripts/file2", "package.json"},
+		[]string{"src/files/file1", "src/files/file2", "src/scripts/file1", "src/scripts/file2"},
 		packageFile.InstallationFiles(),
 	)
 

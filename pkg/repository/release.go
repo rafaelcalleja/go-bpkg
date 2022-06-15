@@ -98,15 +98,15 @@ func (releaseVersion *ReleaseVersion) FilePath(releaseDir string) string {
 }
 
 func (releaseVersion *ReleaseVersion) IsInstalled(releaseDir string) bool {
-	return releaseVersion.HasPackageMetadata(filepath.Join(releaseDir, releaseVersion.Name))
+	return releaseVersion.HasPackageMetadata(filepath.Join(releaseDir, releaseVersion.NameWithOrganization()))
 }
 
 func (releaseVersion *ReleaseVersion) IsVersionInstalled(version string, releaseDir string) bool {
-	if false == releaseVersion.HasPackageMetadata(filepath.Join(releaseDir, releaseVersion.Name)) {
+	if false == releaseVersion.HasPackageMetadata(filepath.Join(releaseDir, releaseVersion.NameWithOrganization())) {
 		return false
 	}
 
-	packageMetadata := releaseVersion.MustPackageMetadata(filepath.Join(releaseDir, releaseVersion.Name))
+	packageMetadata := releaseVersion.MustPackageMetadata(filepath.Join(releaseDir, releaseVersion.NameWithOrganization()))
 
 	return packageMetadata.Version == version
 }
@@ -152,7 +152,11 @@ func (releaseVersion *ReleaseVersion) DownloadAsset(provider ReleasesProvider, r
 		pluginFileTar = filepath.Join(tempDirectory, f.Name())
 	}
 
-	return NewReleaseAssets(releaseVersion.Name, releaseVersion.VersionWithOutV(), pluginFileTar, tempDirectory), nil
+	return NewReleaseAssets(releaseVersion.NameWithOrganization(), releaseVersion.VersionWithOutV(), pluginFileTar, tempDirectory), nil
+}
+
+func (releaseVersion *ReleaseVersion) NameWithOrganization() string {
+	return fmt.Sprintf("%s-%s", releaseVersion.Organization, releaseVersion.Name)
 }
 
 func (releaseVersion *ReleaseVersion) DownloadAndInstallAsset(provider ReleasesProvider, releaseDir string) error {
@@ -181,6 +185,10 @@ func (releaseVersion *ReleaseVersion) InstallAsset(asset ReleaseAssets, releaseD
 	}
 
 	return nil
+}
+
+func (releaseVersion *ReleaseVersion) InstallAssetWithName(name string, asset ReleaseAssets, releaseDir string) error {
+	return releaseVersion.InstallAsset(asset.CopyWithName(fmt.Sprintf("%s-%s", releaseVersion.Organization, name)), releaseDir)
 }
 
 func (releaseVersion *ReleaseVersion) SetVersion(version string) {
@@ -216,6 +224,37 @@ func (releaseVersion ReleaseVersion) String() string {
 	}
 
 	return fmt.Sprintf("%s/%s", releaseVersion.Organization, releaseVersion.Name)
+}
+
+func (releaseVersion ReleaseVersion) clone() ReleaseVersion {
+	var clone = new(ReleaseVersion)
+	clone.Organization = releaseVersion.Organization
+	clone.Name = releaseVersion.Name
+	clone.version = releaseVersion.version
+	clone.manifest = releaseVersion.manifest
+
+	return *clone
+}
+
+func (releaseVersion ReleaseVersion) CopyWithName(name string) ReleaseVersion {
+	var clone = releaseVersion.clone()
+	clone.Name = name
+
+	return clone
+}
+
+func (releaseVersion ReleaseVersion) CopyWithManifest(manifest string) ReleaseVersion {
+	var clone = releaseVersion.clone()
+	clone.manifest = manifest
+
+	return clone
+}
+
+func (releaseVersion ReleaseVersion) CopyWithVersion(version string) ReleaseVersion {
+	var clone = releaseVersion.clone()
+	clone.version = version
+
+	return clone
 }
 
 func (releaseVersion *ReleaseVersion) Uninstall(releaseDir string) error {

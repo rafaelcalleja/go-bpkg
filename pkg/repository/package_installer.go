@@ -12,12 +12,88 @@ import (
 )
 
 type PackageInstaller struct {
-	Manifest string
-	Name     string   `json:"name"`
-	Version  string   `json:"version"`
-	Scripts  []string `json:"scripts"`
-	Files    []string `json:"files"`
-	BinDir   string
+	Manifest string   `json:"-"`
+	Name     string   `json:"name,omitempty"`
+	Version  string   `json:"version,omitempty"`
+	Scripts  []string `json:"scripts,omitempty"`
+	Files    []string `json:"files,omitempty"`
+	BinDir   string   `json:"-"`
+}
+
+func NewPackageInstallerWith(options ...func(*PackageInstaller) error) (PackageInstaller, error) {
+	var packageInstaller = new(PackageInstaller)
+
+	for _, option := range options {
+		err := option(packageInstaller)
+		if err != nil {
+			return PackageInstaller{}, err
+		}
+	}
+
+	if "" == packageInstaller.BinDir {
+		packageInstaller.BinDir = "bin"
+	}
+
+	if "" == packageInstaller.Manifest {
+		packageInstaller.Manifest = "packages.json"
+	}
+
+	return *packageInstaller, nil
+}
+
+func NewPackageInstaller(manifest string, name string, version string, scripts []string, files []string, binDir string) PackageInstaller {
+	packageInstaller, _ := NewPackageInstallerWith(
+		PackageInstallerWithManifest(manifest),
+		PackageInstallerWithName(name),
+		PackageInstallerWithVersion(version),
+		PackageInstallerWithScripts(scripts),
+		PackageInstallerWithFiles(files),
+		PackageInstallerWithBinDir(binDir),
+	)
+
+	return packageInstaller
+}
+
+func PackageInstallerWithScripts(scripts []string) func(*PackageInstaller) error {
+	return func(p *PackageInstaller) error {
+		p.Scripts = scripts
+		return nil
+	}
+}
+
+func PackageInstallerWithFiles(files []string) func(*PackageInstaller) error {
+	return func(p *PackageInstaller) error {
+		p.Files = files
+		return nil
+	}
+}
+
+func PackageInstallerWithBinDir(binDir string) func(*PackageInstaller) error {
+	return func(p *PackageInstaller) error {
+		p.BinDir = binDir
+		return nil
+	}
+}
+
+func PackageInstallerWithManifest(manifest string) func(*PackageInstaller) error {
+	return func(p *PackageInstaller) error {
+		p.Manifest = manifest
+		return nil
+	}
+}
+
+func PackageInstallerWithVersion(version string) func(*PackageInstaller) error {
+	return func(p *PackageInstaller) error {
+		p.Version = version
+		return nil
+	}
+}
+
+func PackageInstallerWithName(name string) func(*PackageInstaller) error {
+	return func(p *PackageInstaller) error {
+		p.Name = name
+		return nil
+	}
 }
 
 func NewPackageInstallerFromLiteral(metadata string, filePath string) (*PackageInstaller, error) {
@@ -42,7 +118,6 @@ func NewPackageInstallerFromFileName(filePath string) (*PackageInstaller, error)
 	}
 
 	data := new(PackageInstaller)
-	data.BinDir = "bin"
 
 	data.Manifest = filepath.Base(filePath)
 
@@ -52,7 +127,15 @@ func NewPackageInstallerFromFileName(filePath string) (*PackageInstaller, error)
 		return &PackageInstaller{}, errors.New(fmt.Sprintf("Error unmarsalling %s", filePath))
 	}
 
-	return data, nil
+	newPackageInstaller, err := NewPackageInstallerWith(
+		PackageInstallerWithManifest(data.Manifest),
+		PackageInstallerWithName(data.Name),
+		PackageInstallerWithVersion(data.Version),
+		PackageInstallerWithScripts(data.Scripts),
+		PackageInstallerWithFiles(data.Files),
+	)
+
+	return &newPackageInstaller, nil
 }
 
 func (packageMetadata *PackageInstaller) InstallationFiles() []string {
@@ -64,8 +147,6 @@ func (packageMetadata *PackageInstaller) InstallationFiles() []string {
 	for _, file := range packageMetadata.Scripts {
 		f = append(f, file)
 	}
-
-	f = append(f, packageMetadata.Manifest)
 
 	return f
 }
@@ -112,6 +193,16 @@ func (packageMetadata *PackageInstaller) Install(sourceDir string, destDir strin
 		}
 	}
 
+	metadataFile, err := json.MarshalIndent(packageMetadata, "", " ")
+	if nil != err {
+		return err
+	}
+
+	manifestPath := filepath.Join(destDir, packageMetadata.Manifest)
+	if err = ioutil.WriteFile(manifestPath, metadataFile, 0644); nil != err {
+		return errors.New(fmt.Sprintf("Error Creating manifest file %s", manifestPath))
+	}
+
 	binDir := filepath.Join(filepath.Dir(destDir), packageMetadata.BinDir)
 	if err := os.MkdirAll(binDir, 0755); nil != err {
 		return errors.New(fmt.Sprintf("Error Creating bin dir %s", binDir))
@@ -147,6 +238,47 @@ func (packageMetadata *PackageInstaller) Install(sourceDir string, destDir strin
 		if err := os.Rename(symlinkPathTmp, dstLink); err != nil {
 			return errors.New(fmt.Sprintf("Error Renaming Symlink from %s to %s", src, dst))
 		}
+	}
+
+	return nil
+}
+
+func (packageMetadata *PackageInstaller) Uninstall(destDir string) error {
+	if false == packageMetadata.IsInstalled(destDir) {
+		return errors.New(fmt.Sprintf("Package not installed"))
+	}
+
+	for _, file := range packageMetadata.InstallationFiles() {
+		src := filepath.Join(destDir, file)
+
+		if _, err := os.Stat(src); errors.Is(err, os.ErrNotExist) {
+			return errors.New(fmt.Sprintf("Source File not found %s", src))
+		}
+
+		if err := os.Remove(src); nil != err {
+			return errors.New(fmt.Sprintf("Error uninstalling file %s", src))
+		}
+	}
+
+	manifestPath := filepath.Join(destDir, packageMetadata.Manifest)
+	if err := os.Remove(manifestPath); nil != err {
+		return errors.New(fmt.Sprintf("Error uninstalling manifest file %s", manifestPath))
+	}
+
+	for _, srcFile := range packageMetadata.LinkFiles() {
+		src := filepath.Join(packageMetadata.BinDir, filepath.Base(srcFile))
+
+		if _, err := os.Stat(src); errors.Is(err, os.ErrNotExist) {
+			return errors.New(fmt.Sprintf("Link File not found %s", src))
+		}
+
+		if err := os.Remove(src); nil != err {
+			return errors.New(fmt.Sprintf("Error uninstalling link file %s", src))
+		}
+	}
+
+	if err := os.Remove(destDir); nil != err {
+		return errors.New(fmt.Sprintf("Error uninstalling directory %s", destDir))
 	}
 
 	return nil

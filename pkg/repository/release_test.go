@@ -18,7 +18,7 @@ func newAssetProviderMock() *GithubProvider {
 
 func TestDownloadPlugin(t *testing.T) {
 	releaseDir, _ := os.MkdirTemp("", "temp-test-plugin-folder")
-	os.RemoveAll(releaseDir)
+	defer os.RemoveAll(releaseDir)
 
 	testReleaseVersionOther, err := NewReleaseVersionWith(
 		ReleaseVersionWithOrganization("rafaelcalleja"),
@@ -115,4 +115,36 @@ func TestNewPluginLatestVersion(t *testing.T) {
 		assert.Equal(t, expected, releaseVersion.VersionWithV())
 	})
 
+}
+
+func TestDownloadAssetWithMultipleInstallations(t *testing.T) {
+	downloadDir, _ := os.MkdirTemp("", "temp-test-download-folder")
+	installDirA, _ := os.MkdirTemp("", "temp-test-install-folder")
+	installDirB, _ := os.MkdirTemp("", "temp-test-install-b-folder")
+	defer os.RemoveAll(downloadDir)
+	defer os.RemoveAll(installDirA)
+	defer os.RemoveAll(installDirB)
+
+	testReleaseVersionOther, err := NewReleaseVersionWith(
+		ReleaseVersionWithOrganization("rafaelcalleja"),
+		ReleaseVersionWithName("assert.sh"),
+		ReleaseVersionWithVersion("v1.1"),
+	)
+	require.Nil(t, err)
+
+	assert.False(t, testReleaseVersionOther.IsInstalled(installDirA))
+	asset, err := testReleaseVersionOther.DownloadAsset(newAssetProviderMock(), downloadDir)
+	require.Nil(t, err)
+
+	err = testReleaseVersionOther.InstallAsset(asset, installDirA)
+	require.Nil(t, err)
+
+	assert.True(t, testReleaseVersionOther.IsInstalled(installDirA))
+
+	cloneWithName := testReleaseVersionOther.CopyWithName("copy-of-asset")
+	err = cloneWithName.InstallAssetWithName("copy-of-asset", asset, installDirB)
+
+	require.Nil(t, err)
+
+	assert.True(t, cloneWithName.IsInstalled(installDirB))
 }
