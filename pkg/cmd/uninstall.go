@@ -35,15 +35,18 @@ func NewPackageUninstall(
 			helper.CheckErr(err)
 
 			for _, pkg := range packagesInstalled {
-				if pkg.Name == pkgName {
+				if pkg.Name == pkgName && pkg.Version == fqpVO.Version() {
 					err = pkg.Uninstall(filepath.Join(o.installPath, pkgName))
 					helper.CheckErr(err)
 					log.Infof("Package %s:%s uninstalled!", term.ColorInfo(fmt.Sprintf("%s/%s", fqpVO.Organization(), fqpVO.Name())),
 						term.ColorInfo(fqpVO.Version()))
 
-					break
+					return
 				}
 			}
+
+			log.Infof("Package %s:%s %s!", term.ColorInfo(fmt.Sprintf("%s/%s", fqpVO.Organization(), fqpVO.Name())),
+				term.ColorInfo(fqpVO.Version()), term.ColorError("not found"))
 		},
 	}
 

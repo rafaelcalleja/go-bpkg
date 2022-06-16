@@ -20,6 +20,11 @@ type PackageInstaller struct {
 	BinDir   string   `json:"-"`
 }
 
+var (
+	DefaultPackageFile                 = "package.json"
+	ErrPackageInstallerNameCantBeEmpty = errors.New("package installer name can't be empty")
+)
+
 func NewPackageInstallerWith(options ...func(*PackageInstaller) error) (PackageInstaller, error) {
 	var packageInstaller = new(PackageInstaller)
 
@@ -35,7 +40,11 @@ func NewPackageInstallerWith(options ...func(*PackageInstaller) error) (PackageI
 	}
 
 	if "" == packageInstaller.Manifest {
-		packageInstaller.Manifest = "packages.json"
+		packageInstaller.Manifest = DefaultPackageFile
+	}
+
+	if "" == packageInstaller.Name {
+		return PackageInstaller{}, ErrPackageInstallerNameCantBeEmpty
 	}
 
 	return *packageInstaller, nil
@@ -96,16 +105,22 @@ func PackageInstallerWithName(name string) func(*PackageInstaller) error {
 	}
 }
 
-func NewPackageInstallerFromLiteral(metadata string, filePath string) (*PackageInstaller, error) {
-	if err := os.MkdirAll(filepath.Dir(filePath), 0755); nil != err {
-		return &PackageInstaller{}, errors.New(fmt.Sprintf("Error Creating dir %s", filepath.Dir(filePath)))
+func NewPackageInstallerFromLiteral(metadata string) (*PackageInstaller, error) {
+	tmpDir, err := os.MkdirTemp("", "temp-pkg-metadata")
+	if nil != err {
+		return &PackageInstaller{}, errors.New(fmt.Sprintf("Error Creating temporal dir %s", tmpDir))
 	}
 
-	err := ioutil.WriteFile(filePath, []byte(metadata), 0644)
+	defer os.RemoveAll(tmpDir)
+
+	filePath := filepath.Join(tmpDir, DefaultPackageFile)
+	err = ioutil.WriteFile(filePath, []byte(metadata), 0644)
 
 	if err != nil {
-		return &PackageInstaller{}, errors.New(fmt.Sprintf("Error creating metadata file %s", filePath))
+		return &PackageInstaller{}, errors.New(fmt.Sprintf("Error creating temporal metadata file %s", filePath))
 	}
+
+	defer os.Remove(filePath)
 
 	return NewPackageInstallerFromFileName(filePath)
 }
@@ -135,7 +150,7 @@ func NewPackageInstallerFromFileName(filePath string) (*PackageInstaller, error)
 		PackageInstallerWithFiles(data.Files),
 	)
 
-	return &newPackageInstaller, nil
+	return &newPackageInstaller, err
 }
 
 func (packageMetadata *PackageInstaller) InstallationFiles() []string {
@@ -257,7 +272,7 @@ func (packageMetadata *PackageInstaller) Uninstall(destDir string) error {
 		}
 
 		if err := os.Remove(src); nil != err {
-			return errors.New(fmt.Sprintf("Error uninstalling file %s", src))
+			return errors.New(fmt.Sprintf("Error uninstalling file %s: %s", src, err))
 		}
 	}
 
@@ -318,10 +333,10 @@ func PackagesInstalled(releaseDir string) ([]*PackageInstaller, error) {
 	}
 
 	for _, file := range metadataFiles {
-		other, err := NewPackageInstallerFromFileName(file)
+		other, _ := NewPackageInstallerFromFileName(file)
 
 		if err != nil {
-			return []*PackageInstaller{}, err
+			continue
 		}
 
 		assets = append(assets, other)

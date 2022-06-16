@@ -9,7 +9,6 @@ import (
 	"github.com/rafaelcalleja/go-kit/logger"
 	"github.com/spf13/cobra"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -18,6 +17,7 @@ type PackageInstallOptions struct {
 	installPath  string
 	token        string
 	metadataJson string
+	alias        string
 }
 
 func NewPackageInstall(
@@ -57,13 +57,25 @@ func NewPackageInstall(
 					fqpVO.Name(),
 					repository.NewGithubVersionFinder(factory),
 				)
+
+				fqpVO = fqpVO.CopyWithVersion(releaseVersion.Version())
 			}
 
-			if true == releaseVersion.IsVersionInstalled(releaseVersion.Version(), o.installPath) {
-				log.Infof("Package %s already at version %s", term.ColorInfo(fmt.Sprintf("%s/%s", releaseVersion.Organization, releaseVersion.Name)),
-					term.ColorInfo(releaseVersion.Version()))
+			if "" != o.alias {
+				fqpVO = fqpVO.CopyWithName(o.alias)
+			}
 
-				return
+			pkgName := fmt.Sprintf("%s-%s", fqpVO.Organization(), fqpVO.Name())
+			packagesInstalled, err := repository.PackagesInstalled(o.installPath)
+			helper.CheckErr(err)
+
+			for _, pkg := range packagesInstalled {
+				if pkg.Name == pkgName && pkg.Version == fqpVO.Version() {
+					log.Infof("Package %s already at version %s", term.ColorInfo(fqpVO.String()),
+						term.ColorInfo(releaseVersion.Version()))
+
+					return
+				}
 			}
 
 			log.Infof("Installing Package %s at %s", term.ColorInfo(releaseVersion.String()),
@@ -71,10 +83,14 @@ func NewPackageInstall(
 
 			assetGithub := repository.NewGithubProvider(factory)
 			asset, err := releaseVersion.DownloadAsset(assetGithub, o.installPath)
+			if "" != o.alias {
+				asset = asset.CopyWithName(fmt.Sprintf("%s-%s", fqpVO.Organization(), o.alias))
+			}
+
 			helper.CheckErr(err)
 
 			if "" != strings.TrimSpace(o.metadataJson) {
-				metadata, err := repository.NewPackageInstallerFromLiteral(o.metadataJson, filepath.Join(o.installPath, "package.json"))
+				metadata, err := repository.NewPackageInstallerFromLiteral(o.metadataJson)
 				helper.CheckErr(err)
 
 				err = asset.Install(metadata, o.installPath)
@@ -92,6 +108,7 @@ func NewPackageInstall(
 	newCmd.Flags().StringVar(&o.installPath, "installPath", "./deps", "[package install path]")
 	newCmd.Flags().StringVar(&o.token, "token", "", "Github Token")
 	newCmd.Flags().StringVar(&o.metadataJson, "metadataJson", "", "overwrite current package.json")
+	newCmd.Flags().StringVar(&o.alias, "alias", "", "package name is replace using alias")
 
 	_ = newCmd.MarkFlagRequired("package")
 

@@ -66,3 +66,27 @@ func (fqp *FullyQualifyPackage) Equals(other FullyQualifyPackage) bool {
 		fqp.organization == other.organization &&
 		fqp.version == other.version
 }
+
+func (fqp FullyQualifyPackage) clone() FullyQualifyPackage {
+	var clone = new(FullyQualifyPackage)
+
+	clone.organization = fqp.organization
+	clone.name = fqp.name
+	clone.version = fqp.version
+
+	return *clone
+}
+
+func (fqp FullyQualifyPackage) CopyWithVersion(version string) FullyQualifyPackage {
+	clone := fqp.clone()
+	clone.version = version
+
+	return clone
+}
+
+func (fqp FullyQualifyPackage) CopyWithName(name string) FullyQualifyPackage {
+	clone := fqp.clone()
+	clone.name = name
+
+	return clone
+}
