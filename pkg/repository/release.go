@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
 )
 
 type ReleasesProvider interface {
@@ -255,28 +254,6 @@ func (releaseVersion ReleaseVersion) CopyWithVersion(version string) ReleaseVers
 	clone.version = version
 
 	return clone
-}
-
-func (releaseVersion *ReleaseVersion) Uninstall(releaseDir string) error {
-	join := filepath.Join(releaseDir, releaseVersion.Name+"-*")
-	installedPlugins, err := filepath.Glob(join)
-	if err != nil {
-		return errors.New(fmt.Sprintf("Error Uninstalling Release finding %s", join))
-	}
-
-	reg := regexp.MustCompile(`^` + releaseVersion.Name + `[\-]{1}[\d|\.]{4}\d$`)
-
-	for _, file := range installedPlugins {
-		if reg.MatchString(filepath.Base(file)) {
-			err = os.Remove(file)
-		}
-
-		if err != nil {
-			return errors.New(fmt.Sprintf("Error Uninstalling Release can't remove file %s", file))
-		}
-	}
-
-	return nil
 }
 
 func NewReleaseLatestVersion(organization string, name string, finder ReleaseVersionFinder) (ReleaseVersion, error) {

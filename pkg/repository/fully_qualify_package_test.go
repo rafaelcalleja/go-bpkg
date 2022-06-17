@@ -20,6 +20,7 @@ func TestNewFullyQualifyPackage(t *testing.T) {
 			require.Nil(t, err)
 
 			assert.True(t, fqpVO.Equals(expected))
+			assert.Equal(t, fqp, fqpVO.String())
 		}
 	})
 
@@ -39,6 +40,27 @@ func TestNewFullyQualifyPackage(t *testing.T) {
 		for _, fqp := range invalid {
 			_, err := NewFullyQualifyPackage(fqp)
 			assert.Equal(t, err, ErrFullyQualifyPackageInvalidFormat)
+		}
+	})
+
+	t.Run("Mutate FQP", func(t *testing.T) {
+		mutations := map[string]string{
+			"organization/name":        "organization/newName",
+			"organization/name:v1.0":   "organization/name:newVersion",
+			"organization/name:latest": "organization/newName:newVersion",
+		}
+
+		for fqp, expected := range mutations {
+			fqpVO, err := NewFullyQualifyPackage(fqp)
+			require.Nil(t, err)
+
+			expectedVO, err := NewFullyQualifyPackage(expected)
+			require.Nil(t, err)
+
+			mutation := fqpVO.CopyWithName(expectedVO.Name()).CopyWithVersion(expectedVO.Version())
+
+			assert.True(t, expectedVO.Equals(mutation))
+			assert.NotSame(t, expectedVO, mutation)
 		}
 	})
 }

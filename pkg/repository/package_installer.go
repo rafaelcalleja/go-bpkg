@@ -333,7 +333,7 @@ func PackagesInstalled(releaseDir string) ([]*PackageInstaller, error) {
 	}
 
 	for _, file := range metadataFiles {
-		other, _ := NewPackageInstallerFromFileName(file)
+		other, err := NewPackageInstallerFromFileName(file)
 
 		if err != nil {
 			continue

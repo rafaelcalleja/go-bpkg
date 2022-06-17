@@ -50,6 +50,12 @@ func TestSetVersionRemoveV(t *testing.T) {
 	assert.Equal(t, mockReleaseVersion.Version(), versionWithV)
 	assert.Equal(t, mockReleaseVersion.VersionWithV(), versionWithV)
 	assert.Equal(t, mockReleaseVersion.VersionWithOutV(), versionWithOutV)
+
+	mockReleaseVersion = NewReleaseVersion("dummy", "name", versionWithOutV)
+
+	assert.Equal(t, mockReleaseVersion.Version(), versionWithOutV)
+	assert.Equal(t, mockReleaseVersion.VersionWithV(), versionWithV)
+	assert.Equal(t, mockReleaseVersion.VersionWithOutV(), versionWithOutV)
 }
 
 func TestReleaseVersionWithFQDN(t *testing.T) {
@@ -85,6 +91,28 @@ func TestReleaseVersionWithFQDN(t *testing.T) {
 		for _, fqdn := range invalid {
 			_, err := ReleaseVersionWithFQP(fqdn)
 			assert.Equal(t, err, ErrFullyQualifyPackageInvalidFormat)
+		}
+	})
+
+	t.Run("Mutate FQDN", func(t *testing.T) {
+		mutations := map[string]string{
+			"organization/name":        "organization/newName",
+			"organization/name:v1.0":   "organization/name:newVersion",
+			"organization/name:latest": "organization/newName:newVersion",
+		}
+
+		for fqp, expected := range mutations {
+			fqpVO, err := ReleaseVersionWithFQP(fqp)
+			require.Nil(t, err)
+
+			expectedVO, err := ReleaseVersionWithFQP(expected)
+			require.Nil(t, err)
+
+			expectedVO.manifest = "new.json"
+			mutation := fqpVO.CopyWithName(expectedVO.Name).CopyWithVersion(expectedVO.Version()).CopyWithManifest(expectedVO.Manifest())
+
+			assert.True(t, expectedVO.Equals(mutation))
+			assert.NotSame(t, expectedVO, mutation)
 		}
 	})
 }

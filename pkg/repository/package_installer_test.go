@@ -70,9 +70,47 @@ func TestFromLiteralUnmarshall(t *testing.T) {
 	require.Nil(t, err)
 
 	assert.True(t, packageFile.Equals(other))
+
+	_, err = NewPackageInstallerFromFileName("testdata/invalid.json")
+	assert.NotNil(t, err)
 }
 
 func TestRequiredName(t *testing.T) {
 	_, err := NewPackageInstallerFromLiteral("{}")
 	assert.Equal(t, ErrPackageInstallerNameCantBeEmpty, err)
+}
+
+func TestNewPackageInstaller(t *testing.T) {
+	packageNew := NewPackageInstaller("a.json", "name", "version", []string{"scripts"}, []string{"files"}, "bin")
+
+	assert.Equal(t, "version", packageNew.Version)
+	assert.Equal(t, "a.json", packageNew.Manifest)
+	assert.Equal(t, "name", packageNew.Name)
+	assert.Equal(t, []string{"scripts"}, packageNew.Scripts)
+	assert.Equal(t, []string{"files"}, packageNew.Files)
+	assert.Equal(t, "bin", packageNew.BinDir)
+
+	otherPackage := NewPackageInstaller("", "name", "version", []string{}, []string{}, "")
+	assert.Equal(t, "version", otherPackage.Version)
+	assert.Equal(t, DefaultPackageFile, otherPackage.Manifest)
+	assert.Equal(t, "name", otherPackage.Name)
+	assert.Equal(t, []string{}, otherPackage.Scripts)
+	assert.Equal(t, []string{}, otherPackage.Files)
+	assert.Equal(t, "bin", otherPackage.BinDir)
+
+	assert.Equal(
+		t,
+		PackageInstaller{},
+		NewPackageInstaller("a.json", "", "version", []string{"scripts"}, []string{"files"}, "bin"),
+	)
+}
+
+func TestPackagesInstalled(t *testing.T) {
+	packages, err := PackagesInstalled("testdata/packages_installed")
+	require.Nil(t, err)
+
+	assert.Equal(t, 2, len(packages))
+
+	_, err = PackagesInstalled("testdata/not_found")
+	assert.NotNil(t, err)
 }
