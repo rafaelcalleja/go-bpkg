@@ -247,6 +247,13 @@ func (packageMetadata *PackageInstaller) Install(sourceDir string, destDir strin
 			return errors.New(fmt.Sprintf("Error Unlinking Symlink from %s", dst))
 		}
 
+		//ToDo coverage test
+		if false == filepath.IsAbs(dst) {
+			if dst, err = filepath.Abs(dst); err != nil {
+				return errors.New(fmt.Sprintf("Error getting absolute representation of path %s", dst))
+			}
+		}
+
 		if err := os.Symlink(dst, symlinkPathTmp); err != nil {
 			return errors.New(fmt.Sprintf("Error Creating Symlink from %s to %s", src, dst))
 		}

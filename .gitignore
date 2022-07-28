@@ -19,3 +19,4 @@ imposters
 !internal/server/http/test/testdata/imposters/
 
 vendor
+deps/

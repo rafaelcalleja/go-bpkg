@@ -53,6 +53,30 @@ func TestUnmarshall(t *testing.T) {
 	require.Nil(t, err)
 
 	assert.True(t, packageFile.IsInstalled(installDir))
+
+	var binDirFiles []string
+	binDir := filepath.Join(filepath.Dir(installDir), packageFile.BinDir)
+	err = filepath.Walk(binDir, func(path string, info os.FileInfo, err error) error {
+		if info.IsDir() {
+			return nil
+		}
+
+		if _, err = os.Readlink(path); err != nil {
+			return err
+		}
+
+		binDirFiles = append(binDirFiles, info.Name())
+
+		return err
+	})
+
+	require.Nil(t, err)
+
+	assert.Equal(
+		t,
+		[]string{"file1", "file2"},
+		binDirFiles,
+	)
 }
 
 func TestNotFound(t *testing.T) {
