@@ -249,8 +249,8 @@ func (packageMetadata *PackageInstaller) Install(sourceDir string, destDir strin
 
 		//ToDo coverage test
 		if false == filepath.IsAbs(dst) {
-			if dst, err = filepath.Abs(dst); err != nil {
-				return errors.New(fmt.Sprintf("Error getting absolute representation of path %s", dst))
+			if dst, err = filepath.Rel(binDir, dst); err != nil {
+				return errors.New(fmt.Sprintf("Error getting relative representation of path %s", dst))
 			}
 		}
 
