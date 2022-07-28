@@ -9,6 +9,9 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      GOPRIVATE: github.com/rafaelcalleja/go-dokify
+      GH_ACCESS_TOKEN: ${{ secrets.GH_RELEASER }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -22,6 +25,7 @@ jobs:
           echo "GOVERSION=1.18" >> $GITHUB_ENV
           echo "ROOTPACKAGE=github.com/$GITHUB_REPOSITORY" >> $GITHUB_ENV
           echo "KITPACKAGE=github.com/$GITHUB_ACTOR/go-kit" >> $GITHUB_ENV
+      - run: git config --global url.https://$GH_ACCESS_TOKEN@github.com/.insteadOf https://github.com/
       - name: Set up Go
         uses: actions/setup-go@v2
         with:

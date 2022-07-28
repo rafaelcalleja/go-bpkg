@@ -6,7 +6,7 @@ builds:
     main: ./cmd/main.go
     binary: go-bpkg
     ldflags:
-      -X "{{.Env.ROOTPACKAGE}}/pkg/cmd/version.Version={{.Tag}}" -X "{{.Env.ROOTPACKAGE}}/pkg/cmd/version.Revision={{.Env.REV}}" -X "{{.Env.ROOTPACKAGE}}/pkg/cmd/version.Branch={{.Env.BRANCH}}" -X "{{.Env.ROOTPACKAGE}}/pkg/cmd/version.BuildDate={{.Env.BUILDDATE}}" -X "{{.Env.ROOTPACKAGE}}/pkg/cmd/version.GoVersion={{.Env.GOVERSION}}"
+      -X "{{.Env.KITPACKAGE}}/cmd/cobra/version.Version={{.Tag}}" -X "{{.Env.KITPACKAGE}}/cmd/cobra/version.Revision={{.Env.REV}}" -X "{{.Env.KITPACKAGE}}/cmd/cobra/version.Branch={{.Env.BRANCH}}" -X "{{.Env.KITPACKAGE}}/cmd/cobra/version.BuildDate={{.Env.BUILDDATE}}" -X "{{.Env.KITPACKAGE}}/cmd/cobra/version.GoVersion={{.Env.GOVERSION}}"
     env:
       - CGO_ENABLED=0
     goos:
